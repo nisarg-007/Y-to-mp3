@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+:root {
+  --yt-bg: #0f0f0f;
+  --yt-surface: #1f1f1f;
+  --yt-surface-hover: #272727;
+  --yt-border: #303030;
+  --yt-red: #ff0000;
+  --yt-red-hover: #cc0000;
+  --yt-text-primary: #f1f1f1;
+  --yt-text-secondary: #aaaaaa;
+  --yt-input-bg: #121212;
+  --yt-button-bg: #222222;
+  --yt-button-hover: #3f3f3f;
+  --yt-font: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background-color: var(--yt-bg);
+  color: var(--yt-text-primary);
+  font-family: var(--yt-font);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Custom Scrollbars to match YouTube's style */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--yt-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--yt-surface-hover);
+  border: 3px solid var(--yt-bg);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--yt-button-hover);
+}

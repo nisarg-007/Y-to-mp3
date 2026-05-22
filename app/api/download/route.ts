@@ -7,6 +7,82 @@ import fs from "fs";
 
 const execAsync = promisify(exec);
 
+function getMime(ext: string): string {
+  const map: Record<string, string> = {
+    mp3: "audio/mpeg",
+    m4a: "audio/mp4",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mkv: "video/x-matroska",
+    ogg: "audio/ogg",
+  };
+  return map[ext] || "application/octet-stream";
+}
+
+async function downloadWithCobalt(url: string, format: string): Promise<NextResponse> {
+  const cobaltUrl = process.env.COBALT_API || "https://api.cobalt.tools";
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+
+  if (process.env.COBALT_API_KEY) {
+    headers["Authorization"] = `Api-Key ${process.env.COBALT_API_KEY}`;
+  }
+
+  const isAudio = format === "mp3" || format === "m4a";
+  const body: any = {
+    url: url,
+    filenameStyle: "basic",
+  };
+
+  if (isAudio) {
+    body.downloadMode = "audio";
+    body.audioFormat = "mp3";
+    body.audioBitrate = "256";
+  } else {
+    body.downloadMode = "auto";
+    const [resolution, vidExt] = format.split("-");
+    if (resolution && !isNaN(parseInt(resolution))) {
+      body.videoQuality = resolution;
+    }
+  }
+
+  const response = await fetch(cobaltUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Cobalt API failed (${response.status}): ${errorText}`);
+  }
+
+  const resData = await response.json();
+
+  if (resData.status === "error") {
+    throw new Error(resData.text || "Cobalt download failed");
+  }
+
+  if (resData.url) {
+    const fileRes = await fetch(resData.url);
+    if (!fileRes.ok) {
+      throw new Error(`Failed to fetch media file: ${fileRes.statusText}`);
+    }
+
+    const ext = format === "mp3" ? "mp3" : format === "m4a" ? "m4a" : format.split("-")[1] || "mp4";
+    return new NextResponse(fileRes.body, {
+      headers: {
+        "Content-Type": fileRes.headers.get("content-type") || getMime(ext),
+        "Content-Disposition": `attachment; filename="download.${ext}"`,
+      },
+    });
+  } else {
+    throw new Error("Cobalt API did not provide a download URL");
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { url, format } = await req.json();
 
@@ -14,6 +90,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing URL" }, { status: 400 });
   }
 
+  // If running on Vercel, force Cobalt API download
+  if (process.env.VERCEL === "1") {
+    try {
+      return await downloadWithCobalt(url, format);
+    } catch (err: any) {
+      console.error("Cobalt download failed:", err);
+      return NextResponse.json(
+        { error: err.message || "Download failed via Cobalt API" },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Otherwise (local environment), try yt-dlp first, with Cobalt fallback
   const tmpDir = os.tmpdir();
   const tmpFile = path.join(tmpDir, `ytdl_${Date.now()}`);
 
@@ -42,7 +132,6 @@ export async function POST(req: NextRequest) {
         url,
       ];
     } else {
-      // e.g. "1080p-mp4" or "720p-webm"
       const [resolution, vidExt] = format.split("-");
       ext = vidExt || "mp4";
       const height = parseInt(resolution);
@@ -55,41 +144,45 @@ export async function POST(req: NextRequest) {
       ];
     }
 
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawn("python", ["-m", "yt_dlp", ...ytdlArgs]);
-      proc.on("close", (code) => {
-        if (code === 0) resolve();
-        else reject(new Error(`yt-dlp exited with code ${code}`));
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawn("python", ["-m", "yt_dlp", ...ytdlArgs]);
+        proc.on("close", (code) => {
+          if (code === 0) resolve();
+          else reject(new Error(`yt-dlp exited with code ${code}`));
+        });
       });
-    });
 
-    const outFile = `${tmpFile}.${ext}`;
+      const outFile = `${tmpFile}.${ext}`;
 
-    if (!fs.existsSync(outFile)) {
-      // Try to find the actual output file
-      const files = fs.readdirSync(tmpDir).filter(f => f.startsWith(path.basename(tmpFile)));
-      if (files.length === 0) throw new Error("Output file not found");
-      const actualFile = path.join(tmpDir, files[0]);
-      const data = fs.readFileSync(actualFile);
-      fs.unlinkSync(actualFile);
-      const actualExt = path.extname(files[0]).slice(1);
+      if (!fs.existsSync(outFile)) {
+        const files = fs.readdirSync(tmpDir).filter(f => f.startsWith(path.basename(tmpFile)));
+        if (files.length === 0) throw new Error("Output file not found");
+        const actualFile = path.join(tmpDir, files[0]);
+        const data = fs.readFileSync(actualFile);
+        fs.unlinkSync(actualFile);
+        const actualExt = path.extname(files[0]).slice(1);
+        return new NextResponse(data, {
+          headers: {
+            "Content-Type": getMime(actualExt),
+            "Content-Disposition": `attachment; filename="download.${actualExt}"`,
+          },
+        });
+      }
+
+      const data = fs.readFileSync(outFile);
+      fs.unlinkSync(outFile);
+
       return new NextResponse(data, {
         headers: {
-          "Content-Type": getMime(actualExt),
-          "Content-Disposition": `attachment; filename="download.${actualExt}"`,
+          "Content-Type": getMime(ext),
+          "Content-Disposition": `attachment; filename="download.${ext}"`,
         },
       });
+    } catch (cliErr) {
+      console.warn("yt-dlp download failed, trying Cobalt API fallback:", cliErr);
+      return await downloadWithCobalt(url, format);
     }
-
-    const data = fs.readFileSync(outFile);
-    fs.unlinkSync(outFile);
-
-    return new NextResponse(data, {
-      headers: {
-        "Content-Type": getMime(ext),
-        "Content-Disposition": `attachment; filename="download.${ext}"`,
-      },
-    });
   } catch (e: any) {
     console.error(e);
     return NextResponse.json(
@@ -97,16 +190,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function getMime(ext: string): string {
-  const map: Record<string, string> = {
-    mp3: "audio/mpeg",
-    m4a: "audio/mp4",
-    mp4: "video/mp4",
-    webm: "video/webm",
-    mkv: "video/x-matroska",
-    ogg: "audio/ogg",
-  };
-  return map[ext] || "application/octet-stream";
 }

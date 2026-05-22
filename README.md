@@ -8,13 +8,21 @@ A Next.js app for downloading YouTube videos and playlists as MP3 or video.
 - **Single video**: choose format (MP3, M4A, or any available resolution)
 - **Playlist**: browse tracks, select which to download, choose audio format
 - Download queue with live status
-- Deploys to Vercel
+- Responsive dark-themed UI
+
+---
+
+## 🚀 Vercel Deployment & Local Use Ready
+
+This app supports **two modes of operation**:
+1. **Local Development (CLI Mode)**: Uses `yt-dlp` and `ffmpeg` locally for unlimited, direct downloads.
+2. **Vercel Serverless (API Mode)**: Automatically detects Vercel environments and falls back to a public or private **Cobalt API instance**, bypassing local system dependencies!
 
 ---
 
 ## Local Development
 
-### 1. Install yt-dlp and ffmpeg
+### 1. Install System Dependencies
 
 **macOS:**
 ```bash
@@ -24,12 +32,15 @@ brew install yt-dlp ffmpeg
 **Ubuntu/Debian:**
 ```bash
 sudo apt install ffmpeg
-sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-sudo chmod a+rx /usr/local/bin/yt-dlp
+pip install yt-dlp
 ```
 
 **Windows:**
-Download from https://github.com/yt-dlp/yt-dlp/releases and add to PATH.
+```bash
+pip install yt-dlp
+# Download ffmpeg from https://ffmpeg.org/download.html or use:
+choco install ffmpeg  # if you have Chocolatey
+```
 
 ### 2. Install & Run
 
@@ -42,60 +53,56 @@ Open http://localhost:3000
 
 ---
 
-## Deploying to Vercel
+## Self-Hosting on Railway, Fly.io, or Similar
 
-### The Challenge
-Vercel's serverless functions run in a Lambda environment. `yt-dlp` is a Python binary that needs to be available at runtime.
+If you want to deploy this app online, use a platform that supports long-running processes and binary dependencies:
 
-### Option A: Use a pre-built yt-dlp binary (Recommended)
+1. **Railway, Fly.io, Render, etc.** support yt-dlp and ffmpeg
+2. Push this repo to GitHub
+3. Connect your platform to the repo
+4. Deploy!
 
-1. Download the yt-dlp Linux binary:
+Example for Railway:
 ```bash
-mkdir -p bin
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o bin/yt-dlp
-chmod +x bin/yt-dlp
-```
-
-2. Update `app/api/info/route.ts`, `app/api/formats/route.ts`, and `app/api/download/route.ts` to use the bundled binary:
-
-```ts
-import path from "path";
-
-// Replace "yt-dlp" in execAsync/spawn calls with:
-const ytdlpBin = process.env.NODE_ENV === "production"
-  ? path.join(process.cwd(), "bin", "yt-dlp")
-  : "yt-dlp";
-```
-
-3. Add `bin/yt-dlp` to your git repo (it's ~12MB).
-
-4. Update `vercel.json` to include the binary:
-```json
-{
-  "functions": {
-    "app/api/**": { "maxDuration": 300 }
-  },
-  "outputFileTracingIncludes": {
-    "app/api/**": ["./bin/yt-dlp"]
-  }
-}
-```
-
-### Option B: Use a self-hosted backend
-
-Run a small VPS (e.g. Railway, Fly.io) with yt-dlp installed and proxy requests from Vercel to it.
-
-### Deploy
-
-```bash
-vercel deploy --prod
+railway init
+railway up
 ```
 
 ---
 
+## Build & Deploy Locally
+
+Production build:
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## Project Structure
+
+```
+app/
+├── page.tsx          # Main UI component
+├── page.module.css   # Styling
+├── layout.tsx        # Root layout
+└── api/
+    ├── info/        # Fetch video/playlist metadata
+    ├── formats/     # List available formats
+    └── download/    # Handle downloads
+```
+
+---
+
+## Environment Variables (for Vercel)
+
+If you deploy this app to Vercel, you can customize the downloader backend:
+- `COBALT_API`: Set your custom Cobalt instance URL (e.g., `https://api.cobalt.tools` or your self-hosted instance URL). Defaults to the public `https://api.cobalt.tools`.
+- `COBALT_API_KEY`: If your Cobalt instance requires authorization, set your API key here.
+
 ## Notes
 
-- Vercel free tier has a 300s function timeout max (Pro plan needed for long downloads)
-- Large video files may exceed Vercel's 4.5MB response limit — for those, use Option B
-- For personal use on Pro plan, MP3s and videos up to ~720p work well
-- Keep `bin/yt-dlp` updated regularly: `yt-dlp -U`
+- This app uses `python -m yt_dlp` locally to work in environments where yt-dlp is installed via pip.
+- When running on Vercel, metadata is fetched via pure-Node YouTube Oembed / Page Scrapers, and downloading is streamed through Cobalt API.
+- Downloads are streamed directly to your browser without storing files on the server.

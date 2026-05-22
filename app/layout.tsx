@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./page.module.css";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "YTDL — YouTube Downloader",
