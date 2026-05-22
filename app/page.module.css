@@ -1,20 +1,32 @@
 .main {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 48px 24px;
+  padding: 48px 24px 32px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* Header & Logo Section */
+/* =============================================
+   HEADER & LOGO
+   ============================================= */
 .header {
   text-align: center;
   margin-bottom: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  position: relative;
 }
 
 .logo {
@@ -60,9 +72,10 @@
   font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.8px;
-  color: #ffffff;
+  color: var(--yt-logo-text);
   display: flex;
   align-items: center;
+  transition: color 0.35s ease;
 }
 
 .logoTextSub {
@@ -76,9 +89,54 @@
   color: var(--yt-text-secondary);
   margin: 0;
   font-weight: 400;
+  transition: color 0.35s ease;
 }
 
-/* Search Section */
+/* =============================================
+   THEME TOGGLE
+   ============================================= */
+.themeToggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--yt-button-bg);
+  border: 1px solid var(--yt-border);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s ease;
+  color: var(--yt-text-primary);
+  flex-shrink: 0;
+}
+
+.themeToggle:hover {
+  background-color: var(--yt-surface-hover);
+  border-color: var(--yt-text-secondary);
+}
+
+.themeToggle:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+.themeIcon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.themeToggle:hover .themeIcon {
+  transform: rotate(30deg);
+}
+
+/* =============================================
+   SEARCH SECTION
+   ============================================= */
 .inputSection {
   width: 100%;
   max-width: 680px;
@@ -94,7 +152,7 @@
   border-radius: 40px;
   overflow: hidden;
   width: 100%;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.35s ease;
 }
 
 .inputContainer:focus-within {
@@ -151,8 +209,8 @@
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: #ffffff;
+  border: 2px solid var(--yt-border);
+  border-top-color: var(--yt-text-primary);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }
@@ -178,9 +236,280 @@
   font-size: 13px;
   color: var(--yt-text-secondary);
   margin-top: 12px;
+  transition: color 0.35s ease;
 }
 
-/* Single Video Details Card */
+.kbdHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.kbd {
+  font-size: 11px;
+  background: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: inherit;
+  color: var(--yt-text-secondary);
+}
+
+/* =============================================
+   SEARCH RESULTS GRID
+   ============================================= */
+.searchResults {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+  animation: fadeSlideUp 0.4s ease;
+}
+
+@media (max-width: 768px) {
+  .searchResults {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.resultCard {
+  background-color: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease, background-color 0.35s ease;
+  position: relative;
+  animation: fadeSlideUp 0.4s ease backwards;
+}
+
+.resultCard:nth-child(1) { animation-delay: 0.00s; }
+.resultCard:nth-child(2) { animation-delay: 0.04s; }
+.resultCard:nth-child(3) { animation-delay: 0.08s; }
+.resultCard:nth-child(4) { animation-delay: 0.12s; }
+.resultCard:nth-child(5) { animation-delay: 0.16s; }
+.resultCard:nth-child(6) { animation-delay: 0.20s; }
+.resultCard:nth-child(7) { animation-delay: 0.24s; }
+.resultCard:nth-child(8) { animation-delay: 0.28s; }
+.resultCard:nth-child(9) { animation-delay: 0.32s; }
+.resultCard:nth-child(10) { animation-delay: 0.36s; }
+
+.resultCard:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--yt-card-shadow);
+  border-color: var(--yt-text-secondary);
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.resultThumbnailWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.resultThumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.resultCard:hover .resultThumbnail {
+  transform: scale(1.03);
+}
+
+.resultDuration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  z-index: 2;
+}
+
+/* Quick Download Button */
+.quickDownload {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background-color: var(--yt-red);
+  color: #ffffff;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease;
+  font-family: inherit;
+}
+
+.resultCard:hover .quickDownload {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quickDownload:hover {
+  background-color: var(--yt-red-hover);
+}
+
+.quickDownload svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.resultInfo {
+  padding: 12px 14px 14px;
+}
+
+.resultTitle {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--yt-text-primary);
+  margin: 0 0 6px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  transition: color 0.35s ease;
+}
+
+.resultChannel {
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.35s ease;
+}
+
+.resultMeta {
+  font-size: 12px;
+  color: var(--yt-text-secondary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.35s ease;
+}
+
+.resultMetaDot {
+  opacity: 0.5;
+}
+
+/* =============================================
+   SKELETON LOADING CARDS
+   ============================================= */
+.skeletonGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .skeletonGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.skeletonCard {
+  background-color: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.skeletonThumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(
+    90deg,
+    var(--yt-skeleton-base) 25%,
+    var(--yt-skeleton-shine) 50%,
+    var(--yt-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+}
+
+.skeletonBody {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeletonLine {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--yt-skeleton-base) 25%,
+    var(--yt-skeleton-shine) 50%,
+    var(--yt-skeleton-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+}
+
+.skeletonLineShort {
+  composes: skeletonLine;
+  width: 60%;
+}
+
+.skeletonLineTiny {
+  composes: skeletonLine;
+  width: 40%;
+  height: 12px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* =============================================
+   SINGLE VIDEO CARD (existing, from URL paste)
+   ============================================= */
 .videoCard {
   display: flex;
   gap: 24px;
@@ -191,7 +520,9 @@
   width: 100%;
   max-width: 780px;
   margin: 16px auto 32px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--yt-card-shadow);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+  animation: fadeSlideUp 0.4s ease;
 }
 
 @media (max-width: 680px) {
@@ -272,6 +603,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
+  transition: color 0.35s ease;
 }
 
 .formatGrid {
@@ -293,6 +625,7 @@
   justify-content: center;
   transition: all 0.15s ease;
   min-height: 70px;
+  font-family: inherit;
 }
 
 .formatCard:hover {
@@ -330,7 +663,164 @@
   margin-top: 12px;
 }
 
-/* Buttons */
+.formatsLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  padding: 12px 0;
+}
+
+/* =============================================
+   FORMAT SELECTION MODAL (from search results)
+   ============================================= */
+.formatModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.formatModal {
+  background-color: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 16px;
+  width: 560px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.formatModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 0;
+}
+
+.formatModalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--yt-text-primary);
+}
+
+.formatModalClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+  color: var(--yt-text-primary);
+}
+
+.formatModalClose:hover {
+  background-color: var(--yt-surface-hover);
+}
+
+.formatModalClose svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.formatModalVideo {
+  display: flex;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--yt-border);
+}
+
+@media (max-width: 480px) {
+  .formatModalVideo {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+.formatModalThumb {
+  width: 180px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #000;
+}
+
+@media (max-width: 480px) {
+  .formatModalThumb {
+    width: 100%;
+  }
+}
+
+.formatModalThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.formatModalVideoInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.formatModalVideoTitle {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 0 4px 0;
+  color: var(--yt-text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.formatModalVideoChannel {
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  margin: 0 0 2px 0;
+}
+
+.formatModalVideoMeta {
+  font-size: 12px;
+  color: var(--yt-text-secondary);
+  margin: 0;
+}
+
+.formatModalBody {
+  padding: 20px 24px 24px;
+}
+
+.formatModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* =============================================
+   BUTTONS
+   ============================================= */
 .cancelBtn {
   background: none;
   border: 1px solid var(--yt-border);
@@ -341,6 +831,7 @@
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  font-family: inherit;
 }
 
 .cancelBtn:hover {
@@ -360,6 +851,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: inherit;
 }
 
 .downloadBtn:hover:not(:disabled) {
@@ -371,7 +863,9 @@
   cursor: not-allowed;
 }
 
-/* Modals / Overlay */
+/* =============================================
+   MODALS / OVERLAY (playlist)
+   ============================================= */
 .overlay {
   position: fixed;
   top: 0;
@@ -405,6 +899,7 @@
   overflow: hidden;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
   animation: slideUp 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
 }
 
 @keyframes slideUp {
@@ -477,6 +972,7 @@
   flex-direction: column;
   overflow: hidden;
   background-color: var(--yt-bg);
+  transition: background-color 0.35s ease;
 }
 
 @media (max-width: 840px) {
@@ -544,6 +1040,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .pillActive {
@@ -567,6 +1064,7 @@
   font-weight: 500;
   cursor: pointer;
   padding: 0;
+  font-family: inherit;
 }
 
 .selectAll:hover {
@@ -674,7 +1172,9 @@
   border-top: 1px solid var(--yt-border);
 }
 
-/* Download Queue Section */
+/* =============================================
+   DOWNLOAD QUEUE SECTION (enhanced with progress bars)
+   ============================================= */
 .queueSection {
   width: 100%;
   max-width: 680px;
@@ -698,18 +1198,22 @@
 }
 
 .queueItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   background-color: var(--yt-surface);
   border: 1px solid var(--yt-border);
   border-radius: 12px;
   padding: 16px 20px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.35s ease;
+  overflow: hidden;
 }
 
 .queueItem:hover {
   transform: translateY(-1px);
+}
+
+.queueItemTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .queueItem.downloading {
@@ -788,4 +1292,109 @@
   color: #ff4e4e;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* Progress Bar */
+.progressBarWrapper {
+  margin-top: 12px;
+  width: 100%;
+  height: 4px;
+  background-color: var(--yt-progress-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progressBarDownloading {
+  background: linear-gradient(90deg, #3ea6ff, #1c62b9);
+  animation: progressPulse 2s ease-in-out infinite;
+  width: 100%;
+}
+
+.progressBarDone {
+  background: #2e7d32;
+  width: 100%;
+}
+
+.progressBarError {
+  background: #d32f2f;
+  width: 100%;
+}
+
+@keyframes progressPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Indeterminate progress animation */
+.progressIndeterminate {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #3ea6ff, transparent);
+  animation: indeterminate 1.5s ease infinite;
+  width: 40%;
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+/* =============================================
+   FOOTER
+   ============================================= */
+.footer {
+  margin-top: auto;
+  padding: 32px 0 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--yt-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  transition: color 0.35s ease;
+}
+
+.footerShortcuts {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footerShortcut {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.noResults {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--yt-text-secondary);
+  font-size: 15px;
+}
+
+.noResultsIcon {
+  width: 48px;
+  height: 48px;
+  fill: var(--yt-text-secondary);
+  margin-bottom: 12px;
+  opacity: 0.5;
 }
