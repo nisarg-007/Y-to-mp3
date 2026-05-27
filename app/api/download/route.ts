@@ -27,7 +27,13 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
   };
 
   if (process.env.COBALT_API_KEY) {
-    headers["Authorization"] = `Api-Key ${process.env.COBALT_API_KEY}`;
+    const key = process.env.COBALT_API_KEY;
+    // If the key looks like a JWT (three dot-separated parts), send as Bearer
+    if (typeof key === "string" && key.split(".").length === 3) {
+      headers["Authorization"] = `Bearer ${key}`;
+    } else {
+      headers["Authorization"] = `Api-Key ${key}`;
+    }
   }
 
   const isAudio = format === "mp3" || format === "m4a";
