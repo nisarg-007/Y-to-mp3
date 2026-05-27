@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 import { useTheme } from "./components/ThemeProvider";
 
@@ -112,6 +113,44 @@ const PlaylistIcon = () => (
   </svg>
 );
 
+const IPhoneIcon = () => (
+  <svg style={{ width: 20, height: 20, fill: "currentColor" }} viewBox="0 0 24 24">
+    <path d="M15.5 1h-8C6.12 1 5 2.12 5 3.5v17C5 21.88 6.12 23 7.5 23h8c1.38 0 2.5-1.12 2.5-2.5v-17C18 2.12 16.88 1 15.5 1zm-4 21c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5-4H7V4h9v14z" />
+  </svg>
+);
+
+const ShareIcon = () => (
+  <svg style={{ width: 18, height: 18, fill: "currentColor" }} viewBox="0 0 24 24">
+    <path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V10c0-1.11.9-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z" />
+  </svg>
+);
+
+/* ═══════════════════════════════════
+   AUTO-DOWNLOAD HANDLER (reads URL params)
+   ═══════════════════════════════════ */
+function AutoDownloadHandler({
+  onAutoDownload,
+}: {
+  onAutoDownload: (url: string, format: string) => void;
+}) {
+  const searchParams = useSearchParams();
+  const triggered = useRef(false);
+
+  useEffect(() => {
+    if (triggered.current) return;
+    const videoUrl = searchParams.get("url");
+    const format = searchParams.get("autoDownload");
+    if (videoUrl && format) {
+      triggered.current = true;
+      // Clean the URL bar so a refresh doesn't re-trigger
+      window.history.replaceState({}, "", "/");
+      onAutoDownload(videoUrl, format);
+    }
+  }, [searchParams, onAutoDownload]);
+
+  return null;
+}
+
 /* ═══════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════ */
@@ -138,6 +177,15 @@ export default function Home() {
   // Playlist modal
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
+
+  // iOS Shortcut modal
+  const [showShortcutModal, setShowShortcutModal] = useState(false);
+
+  // Auto-download banner
+  const [autoDownloadStatus, setAutoDownloadStatus] = useState<
+    "idle" | "processing" | "done" | "error"
+  >("idle");
+  const [autoDownloadTitle, setAutoDownloadTitle] = useState("");
   const [playlistFormat, setPlaylistFormat] = useState("mp3");
 
   // Format picker details (single video from URL)
@@ -162,11 +210,12 @@ export default function Home() {
       if (e.key === "Escape") {
         if (showFormatModal) setShowFormatModal(false);
         if (showPlaylistModal) setShowPlaylistModal(false);
+        if (showShortcutModal) setShowShortcutModal(false);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showFormatModal, showPlaylistModal]);
+  }, [showFormatModal, showPlaylistModal, showShortcutModal]);
 
   /* ─── Search handler ─── */
   const handleSearch = useCallback(async (query: string) => {
@@ -396,11 +445,102 @@ export default function Home() {
     setSearchResults([]);
   };
 
+  /* ─── Auto-download handler (called by AutoDownloadHandler) ─── */
+  const handleAutoDownload = useCallback(
+    async (videoUrl: string, format: string) => {
+      setAutoDownloadStatus("processing");
+      try {
+        // Fetch video info to get the title
+        const infoRes = await fetch("/api/info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: videoUrl }),
+        });
+        const infoData = await infoRes.json();
+        if (!infoRes.ok) throw new Error(infoData.error || "Failed to get video info");
+
+        const title =
+          infoData.type === "video" ? infoData.title : "YouTube Video";
+        setAutoDownloadTitle(title);
+
+        // Start the download
+        const taskId = `auto-${Date.now()}`;
+        const newTask: DownloadTask = {
+          id: taskId,
+          title,
+          url: videoUrl,
+          format,
+          status: "downloading",
+        };
+        setQueue((q) => [...q, newTask]);
+
+        const dlRes = await fetch("/api/download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: videoUrl, format }),
+        });
+
+        if (!dlRes.ok) {
+          const err = await dlRes.json();
+          throw new Error(err.error || "Download failed");
+        }
+
+        const blob = await dlRes.blob();
+        const ext =
+          format === "mp3" ? "mp3" : format === "m4a" ? "m4a" : format.split("-")[1] || "mp4";
+        const fileName = `${title.replace(/[^a-z0-9]/gi, "_").slice(0, 60)}.${ext}`;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+
+        setQueue((q) =>
+          q.map((t) => (t.id === taskId ? { ...t, status: "done" } : t))
+        );
+        setAutoDownloadStatus("done");
+      } catch (e: any) {
+        setAutoDownloadStatus("error");
+        setError(e.message || "Auto-download failed");
+      }
+    },
+    []
+  );
+
+  /* ─── Get the app's base URL for the Shortcut ─── */
+  const getAppUrl = () => {
+    if (typeof window !== "undefined") {
+      return window.location.origin;
+    }
+    return "https://your-app-url.vercel.app";
+  };
+
   /* ═══════════════════════════════════
      RENDER
      ═══════════════════════════════════ */
   return (
     <main className={styles.main}>
+      {/* ── AUTO-DOWNLOAD HANDLER (reads search params via Suspense) ── */}
+      <Suspense fallback={null}>
+        <AutoDownloadHandler onAutoDownload={handleAutoDownload} />
+      </Suspense>
+
+      {/* ── AUTO-DOWNLOAD BANNER ── */}
+      {autoDownloadStatus === "processing" && (
+        <div className={styles.autoBanner}>
+          <span className={styles.spinner} />
+          <span>Downloading {autoDownloadTitle || "video"} as MP3…</span>
+        </div>
+      )}
+      {autoDownloadStatus === "done" && (
+        <div className={`${styles.autoBanner} ${styles.autoBannerDone}`}>
+          <svg style={{ width: 18, height: 18, fill: "currentColor" }} viewBox="0 0 24 24">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+          </svg>
+          <span>Download complete! Check your Downloads folder.</span>
+        </div>
+      )}
+
       {/* ── HEADER ── */}
       <header className={styles.header}>
         <div className={styles.headerRow}>
@@ -912,8 +1052,140 @@ export default function Home() {
         </div>
       )}
 
+      {/* ── iOS SHORTCUT SETUP MODAL ── */}
+      {showShortcutModal && (
+        <div
+          className={styles.formatModalOverlay}
+          onClick={() => setShowShortcutModal(false)}
+        >
+          <div
+            className={styles.shortcutModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.shortcutModalHeader}>
+              <div className={styles.shortcutModalHeaderLeft}>
+                <div className={styles.shortcutModalIcon}>
+                  <ShareIcon />
+                </div>
+                <div>
+                  <h2 className={styles.shortcutModalTitle}>
+                    Download from iPhone Share
+                  </h2>
+                  <p className={styles.shortcutModalSubtitle}>
+                    One-time setup · Takes 30 seconds
+                  </p>
+                </div>
+              </div>
+              <button
+                className={styles.formatModalClose}
+                onClick={() => setShowShortcutModal(false)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className={styles.shortcutModalBody}>
+              <div className={styles.shortcutSteps}>
+                <div className={styles.shortcutStep}>
+                  <div className={styles.shortcutStepNum}>1</div>
+                  <div className={styles.shortcutStepContent}>
+                    <h4>Open the Shortcuts app</h4>
+                    <p>It comes pre-installed on your iPhone. Search for &quot;Shortcuts&quot; if you can&apos;t find it.</p>
+                  </div>
+                </div>
+
+                <div className={styles.shortcutStep}>
+                  <div className={styles.shortcutStepNum}>2</div>
+                  <div className={styles.shortcutStepContent}>
+                    <h4>Create a new Shortcut</h4>
+                    <p>Tap the <strong>+</strong> button in the top right corner.</p>
+                  </div>
+                </div>
+
+                <div className={styles.shortcutStep}>
+                  <div className={styles.shortcutStepNum}>3</div>
+                  <div className={styles.shortcutStepContent}>
+                    <h4>Add an &quot;Open URLs&quot; action</h4>
+                    <p>Search for &quot;Open URLs&quot; in the actions list and add it. Set the URL to:</p>
+                    <div className={styles.shortcutCodeBlock}>
+                      <code>{getAppUrl()}/?url=<span className={styles.shortcutCodeHighlight}>[Shortcut Input]</span>&autoDownload=mp3</code>
+                    </div>
+                    <p className={styles.shortcutNote}>
+                      💡 Use the <strong>&quot;Shortcut Input&quot;</strong> magic variable for the URL part. This automatically inserts the YouTube link you share.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.shortcutStep}>
+                  <div className={styles.shortcutStepNum}>4</div>
+                  <div className={styles.shortcutStepContent}>
+                    <h4>Enable &quot;Show in Share Sheet&quot;</h4>
+                    <p>
+                      Tap the <strong>ⓘ</strong> icon at the bottom → turn on <strong>&quot;Show in Share Sheet&quot;</strong>.
+                      Under &quot;Share Sheet Types&quot;, select <strong>URLs</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.shortcutStep}>
+                  <div className={styles.shortcutStepNum}>5</div>
+                  <div className={styles.shortcutStepContent}>
+                    <h4>Name it &amp; save</h4>
+                    <p>Name it something like <strong>&quot;Download MP3&quot;</strong> and tap <strong>Done</strong>.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.shortcutDivider} />
+
+              <div className={styles.shortcutHowTo}>
+                <h3 className={styles.shortcutHowToTitle}>How to use</h3>
+                <div className={styles.shortcutHowToSteps}>
+                  <div className={styles.shortcutHowToStep}>
+                    <span className={styles.shortcutHowToEmoji}>📺</span>
+                    <span>Open any YouTube video</span>
+                  </div>
+                  <div className={styles.shortcutHowToArrow}>→</div>
+                  <div className={styles.shortcutHowToStep}>
+                    <span className={styles.shortcutHowToEmoji}>📤</span>
+                    <span>Tap Share</span>
+                  </div>
+                  <div className={styles.shortcutHowToArrow}>→</div>
+                  <div className={styles.shortcutHowToStep}>
+                    <span className={styles.shortcutHowToEmoji}>⚡</span>
+                    <span>Tap &quot;Download MP3&quot;</span>
+                  </div>
+                  <div className={styles.shortcutHowToArrow}>→</div>
+                  <div className={styles.shortcutHowToStep}>
+                    <span className={styles.shortcutHowToEmoji}>🎵</span>
+                    <span>MP3 downloads!</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.shortcutModalFooter}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setShowShortcutModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── FOOTER ── */}
       <footer className={styles.footer}>
+        <button
+          className={styles.iosShortcutBtn}
+          onClick={() => setShowShortcutModal(true)}
+          id="ios-shortcut-btn"
+        >
+          <IPhoneIcon />
+          <span>Download from iPhone</span>
+        </button>
         <div className={styles.footerShortcuts}>
           <span className={styles.footerShortcut}>
             <kbd className={styles.kbd}>Ctrl</kbd>+<kbd className={styles.kbd}>K</kbd> Search

@@ -1398,3 +1398,284 @@
   margin-bottom: 12px;
   opacity: 0.5;
 }
+
+/* =============================================
+   AUTO-DOWNLOAD BANNER
+   ============================================= */
+.autoBanner {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(62, 166, 255, 0.12), rgba(28, 98, 185, 0.08));
+  border: 1px solid rgba(62, 166, 255, 0.3);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--yt-text-primary);
+  animation: fadeSlideUp 0.4s ease;
+}
+
+.autoBannerDone {
+  background: linear-gradient(135deg, rgba(46, 125, 50, 0.12), rgba(46, 125, 50, 0.06));
+  border-color: rgba(46, 125, 50, 0.3);
+  color: #4caf50;
+}
+
+/* =============================================
+   iOS SHORTCUT FOOTER BUTTON
+   ============================================= */
+.iosShortcutBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(62, 166, 255, 0.25);
+  border-radius: 24px;
+  color: #3ea6ff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+
+[data-theme="light"] .iosShortcutBtn {
+  background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
+  border-color: rgba(28, 98, 185, 0.25);
+  color: #1a73e8;
+}
+
+.iosShortcutBtn:hover {
+  border-color: rgba(62, 166, 255, 0.5);
+  background: linear-gradient(135deg, #1a1a2e, #1a2742);
+  box-shadow: 0 4px 16px rgba(62, 166, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+[data-theme="light"] .iosShortcutBtn:hover {
+  border-color: rgba(28, 98, 185, 0.5);
+  background: linear-gradient(135deg, #d2e3fc, #c4d7f5);
+  box-shadow: 0 4px 16px rgba(28, 98, 185, 0.1);
+}
+
+/* =============================================
+   iOS SHORTCUT SETUP MODAL
+   ============================================= */
+.shortcutModal {
+  background-color: var(--yt-surface);
+  border: 1px solid var(--yt-border);
+  border-radius: 16px;
+  width: 620px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.shortcutModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 24px 0;
+  gap: 16px;
+}
+
+.shortcutModalHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.shortcutModalIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--yt-red), #ff4e4e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.shortcutModalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 2px;
+  color: var(--yt-text-primary);
+}
+
+.shortcutModalSubtitle {
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  margin: 0;
+}
+
+.shortcutModalBody {
+  padding: 24px;
+}
+
+.shortcutSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.shortcutStep {
+  display: flex;
+  gap: 16px;
+}
+
+.shortcutStepNum {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--yt-red), #ff4e4e);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.shortcutStepContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortcutStepContent h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--yt-text-primary);
+}
+
+.shortcutStepContent p {
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+
+.shortcutCodeBlock {
+  background: var(--yt-input-bg);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.shortcutCodeBlock code {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--yt-text-primary);
+  word-break: break-all;
+}
+
+.shortcutCodeHighlight {
+  color: var(--yt-red);
+  font-weight: 600;
+}
+
+.shortcutNote {
+  font-size: 12px !important;
+  color: var(--yt-text-secondary) !important;
+  background: rgba(62, 166, 255, 0.06);
+  border-left: 3px solid #3ea6ff;
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  margin-top: 8px !important;
+}
+
+.shortcutDivider {
+  height: 1px;
+  background: var(--yt-border);
+  margin: 24px 0;
+}
+
+.shortcutHowTo {
+  text-align: center;
+}
+
+.shortcutHowToTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--yt-text-primary);
+  margin: 0 0 16px;
+}
+
+.shortcutHowToSteps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.shortcutHowToStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--yt-input-bg);
+  border: 1px solid var(--yt-border);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--yt-text-primary);
+  min-width: 90px;
+  transition: background-color 0.35s ease, border-color 0.35s ease;
+}
+
+.shortcutHowToEmoji {
+  font-size: 22px;
+}
+
+.shortcutHowToArrow {
+  font-size: 16px;
+  color: var(--yt-text-secondary);
+  font-weight: 300;
+}
+
+.shortcutModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 24px 24px;
+}
+
+@media (max-width: 560px) {
+  .shortcutHowToSteps {
+    gap: 6px;
+  }
+
+  .shortcutHowToStep {
+    min-width: 70px;
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+
+  .shortcutHowToArrow {
+    font-size: 14px;
+  }
+
+  .shortcutStep {
+    gap: 12px;
+  }
+
+  .shortcutCodeBlock code {
+    font-size: 11px;
+  }
+}
