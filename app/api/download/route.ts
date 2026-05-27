@@ -28,11 +28,18 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
 
   if (process.env.COBALT_API_KEY) {
     const key = process.env.COBALT_API_KEY;
-    // If the key looks like a JWT (three dot-separated parts), send as Bearer
-    if (typeof key === "string" && key.split(".").length === 3) {
+    const forced = (process.env.COBALT_AUTH_SCHEME || "").toLowerCase();
+    if (forced === "bearer") {
       headers["Authorization"] = `Bearer ${key}`;
-    } else {
+    } else if (forced === "apikey" || forced === "api-key") {
       headers["Authorization"] = `Api-Key ${key}`;
+    } else {
+      // Auto-detect JWT-looking keys (three parts separated by dots)
+      if (typeof key === "string" && key.split(".").length === 3) {
+        headers["Authorization"] = `Bearer ${key}`;
+      } else {
+        headers["Authorization"] = `Api-Key ${key}`;
+      }
     }
   }
 
