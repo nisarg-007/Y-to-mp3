@@ -217,6 +217,16 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handler);
   }, [showFormatModal, showPlaylistModal, showShortcutModal]);
 
+  /* ─── Auto-dismiss status pill ─── */
+  useEffect(() => {
+    if (autoDownloadStatus === "done" || autoDownloadStatus === "error") {
+      const timer = setTimeout(() => {
+        setAutoDownloadStatus("idle");
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoDownloadStatus]);
+
   /* ─── Search handler ─── */
   const handleSearch = useCallback(async (query: string) => {
     const trimmed = query.trim();
