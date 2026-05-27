@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
     if (isPlaylist) {
       try {
         const { stdout } = await execAsync(
-          `python -m yt_dlp --flat-playlist -J "${url}" 2>/dev/null`
+          `python -m yt_dlp --flat-playlist -J "${url}"`
         );
         const data = JSON.parse(stdout);
         return NextResponse.json({
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
     } else {
       try {
         const { stdout } = await execAsync(
-          `python -m yt_dlp -J "${url}" 2>/dev/null`
+          `python -m yt_dlp -J "${url}"`
         );
         const data = JSON.parse(stdout);
         return NextResponse.json({

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   // Otherwise, try to use yt-dlp first, with standard fallback
   try {
     const { stdout } = await execAsync(
-      `python -m yt_dlp -J "${url}" 2>/dev/null`
+      `python -m yt_dlp -J "${url}"`
     );
     const data = JSON.parse(stdout);
 

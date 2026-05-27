@@ -83,9 +83,7 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
   }
 }
 
-export async function POST(req: NextRequest) {
-  const { url, format } = await req.json();
-
+async function handleDownload(url: string, format: string) {
   if (!url) {
     return NextResponse.json({ error: "Missing URL" }, { status: 400 });
   }
@@ -190,4 +188,15 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(req: NextRequest) {
+  const { url, format } = await req.json();
+  return await handleDownload(url, format);
+}
+
+export async function GET(req: NextRequest) {
+  const url = req.nextUrl.searchParams.get("url");
+  const format = req.nextUrl.searchParams.get("format") || "mp3";
+  return await handleDownload(url || "", format);
 }

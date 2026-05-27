@@ -358,6 +358,17 @@ export default function Home() {
     setQueue((q) => [...q, newTask]);
 
     try {
+      // On mobile browsers the `download` attribute and blob downloads
+      // may be blocked or ignored. Open direct GET URL in a new tab so
+      // the browser handles the download natively.
+      const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile) {
+        const downloadUrl = `/api/download?url=${encodeURIComponent(task.url)}&format=${encodeURIComponent(task.format)}`;
+        window.open(downloadUrl, "_blank");
+        setQueue((q) => q.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)));
+        return;
+      }
+
       const res = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -484,26 +495,33 @@ export default function Home() {
         };
         setQueue((q) => [...q, newTask]);
 
-        const dlRes = await fetch("/api/download", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: videoUrl, format }),
-        });
+        // On mobile, open direct download URL so the browser handles saving.
+        const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile) {
+          const downloadUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&format=${encodeURIComponent(format)}`;
+          window.open(downloadUrl, "_blank");
+        } else {
+          const dlRes = await fetch("/api/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: videoUrl, format }),
+          });
 
-        if (!dlRes.ok) {
-          const err = await dlRes.json();
-          throw new Error(err.error || "Download failed");
+          if (!dlRes.ok) {
+            const err = await dlRes.json();
+            throw new Error(err.error || "Download failed");
+          }
+
+          const blob = await dlRes.blob();
+          const ext =
+            format === "mp3" ? "mp3" : format === "m4a" ? "m4a" : format.split("-")[1] || "mp4";
+          const fileName = `${title.replace(/[^a-z0-9]/gi, "_").slice(0, 60)}.${ext}`;
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = fileName;
+          a.click();
+          URL.revokeObjectURL(a.href);
         }
-
-        const blob = await dlRes.blob();
-        const ext =
-          format === "mp3" ? "mp3" : format === "m4a" ? "m4a" : format.split("-")[1] || "mp4";
-        const fileName = `${title.replace(/[^a-z0-9]/gi, "_").slice(0, 60)}.${ext}`;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(a.href);
 
         setQueue((q) =>
           q.map((t) => (t.id === taskId ? { ...t, status: "done" } : t))
