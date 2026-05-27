@@ -1400,29 +1400,311 @@
 }
 
 /* =============================================
-   AUTO-DOWNLOAD BANNER
+   DYNAMIC ISLAND-STYLE STATUS PILL
    ============================================= */
-.autoBanner {
-  width: 100%;
-  max-width: 680px;
-  margin: 0 auto 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  background: linear-gradient(135deg, rgba(62, 166, 255, 0.12), rgba(28, 98, 185, 0.08));
-  border: 1px solid rgba(62, 166, 255, 0.3);
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--yt-text-primary);
-  animation: fadeSlideUp 0.4s ease;
+.dynamicIsland {
+  position: fixed;
+  top: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  border-radius: 36px;
+  overflow: hidden;
+  background: #1a1a1a;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Start as collapsed pill */
+  width: 120px;
+  height: 36px;
+  transition:
+    width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+    height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-radius 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 0.3s ease;
+  animation: islandAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.autoBannerDone {
-  background: linear-gradient(135deg, rgba(46, 125, 50, 0.12), rgba(46, 125, 50, 0.06));
-  border-color: rgba(46, 125, 50, 0.3);
-  color: #4caf50;
+@keyframes islandAppear {
+  0% {
+    width: 36px;
+    height: 36px;
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.05);
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.dynamicIslandExpanded {
+  width: min(340px, 85vw);
+  height: 56px;
+  border-radius: 28px;
+  background: #1a1a1a;
+}
+
+.dynamicIslandExpanded::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 30px;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000,
+    #ff4e4e,
+    #ff8c00,
+    #ff0000
+  );
+  opacity: 0.5;
+  z-index: -1;
+  animation: islandGlowRotate 3s linear infinite;
+  filter: blur(8px);
+}
+
+@keyframes islandGlowRotate {
+  to { transform: rotate(360deg); }
+}
+
+.dynamicIslandDone {
+  width: 180px;
+  height: 44px;
+  border-radius: 22px;
+  background: #1a2e1a;
+  animation: islandPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dynamicIslandDone::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 24px;
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.5), transparent 70%);
+  z-index: -1;
+  filter: blur(6px);
+}
+
+.dynamicIslandError {
+  width: 140px;
+  height: 44px;
+  border-radius: 22px;
+  background: #2e1a1a;
+}
+
+@keyframes islandPop {
+  0% { transform: translateX(-50%) scale(0.9); }
+  50% { transform: translateX(-50%) scale(1.08); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+.dynamicIslandContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Equalizer bars */
+.dynamicIslandEqualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 20px;
+}
+
+.dynamicIslandEqualizer span {
+  display: block;
+  width: 3px;
+  background: #ff0000;
+  border-radius: 1.5px;
+  animation: equalizerBounce 0.8s ease-in-out infinite alternate;
+}
+
+.dynamicIslandEqualizer span:nth-child(1) {
+  height: 8px;
+  animation-delay: 0s;
+}
+.dynamicIslandEqualizer span:nth-child(2) {
+  height: 16px;
+  animation-delay: 0.15s;
+}
+.dynamicIslandEqualizer span:nth-child(3) {
+  height: 12px;
+  animation-delay: 0.3s;
+}
+.dynamicIslandEqualizer span:nth-child(4) {
+  height: 18px;
+  animation-delay: 0.45s;
+}
+
+@keyframes equalizerBounce {
+  0% { height: 4px; }
+  100% { height: 20px; }
+}
+
+.dynamicIslandText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dynamicIslandLabel {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dynamicIslandTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamicIslandWave {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.dynamicIslandWave svg {
+  width: 100%;
+  height: 100%;
+  fill: #ff0000;
+  animation: wavePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes wavePulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Checkmark for done */
+.dynamicIslandCheck {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: checkPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dynamicIslandCheck svg {
+  width: 14px;
+  height: 14px;
+  fill: #ffffff;
+}
+
+@keyframes checkPop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.dynamicIslandDoneText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Error icon */
+.dynamicIslandErrorIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #d32f2f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* Progress bar at bottom of pill */
+.dynamicIslandProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  border-radius: 0 0 28px 28px;
+}
+
+.dynamicIslandProgress::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, #ff0000, #ff4e4e, transparent);
+  border-radius: 2px;
+  animation: islandProgressSlide 1.5s ease-in-out infinite;
+}
+
+@keyframes islandProgressSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* =============================================
+   AMBIENT GLOW (from Dynamic Island area)
+   ============================================= */
+.ambientGlow {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 200px;
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(255, 0, 0, 0.08) 0%,
+    rgba(255, 0, 0, 0.03) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: ambientPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes ambientPulse {
+  0% {
+    opacity: 0.5;
+    width: 280px;
+  }
+  100% {
+    opacity: 1;
+    width: 350px;
+  }
+}
+
+[data-theme="light"] .ambientGlow {
+  background: radial-gradient(
+    ellipse at center top,
+    rgba(255, 0, 0, 0.05) 0%,
+    rgba(255, 0, 0, 0.02) 40%,
+    transparent 70%
+  );
 }
 
 /* =============================================
@@ -1656,26 +1938,366 @@
   padding: 0 24px 24px;
 }
 
-@media (max-width: 560px) {
-  .shortcutHowToSteps {
-    gap: 6px;
+/* =============================================
+   MOBILE: iPhone 16 Pro & similar (≤430px)
+   iPhone 16 Pro = 393pt logical width
+   ============================================= */
+
+/* Touch devices: always show quick download button */
+@media (hover: none) and (pointer: coarse) {
+  .quickDownload {
+    opacity: 1;
+    transform: translateY(0);
   }
 
-  .shortcutHowToStep {
-    min-width: 70px;
-    padding: 10px 8px;
+  .resultCard:hover .resultThumbnail {
+    transform: none;
+  }
+
+  .resultCard:hover {
+    transform: none;
+  }
+}
+
+/* Small screens (phones) */
+@media (max-width: 480px) {
+  .main {
+    padding: 24px 16px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .logoMark {
+    width: 44px;
+    height: 32px;
+  }
+
+  .logoMark::after {
+    border-width: 6px 0 6px 11px;
+  }
+
+  .logoText {
+    font-size: 22px;
+  }
+
+  .tagline {
+    font-size: 13px;
+  }
+
+  .themeToggle {
+    width: 38px;
+    height: 38px;
+  }
+
+  .themeIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Search bar */
+  .inputSection {
+    margin-bottom: 20px;
+  }
+
+  .urlInput {
+    font-size: 15px;
+    padding: 12px 16px;
+  }
+
+  .fetchBtn {
+    height: 44px;
+    padding: 0 20px;
+    min-width: 44px;
+  }
+
+  .hint {
+    font-size: 12px;
+  }
+
+  .kbdHint {
+    display: none;
+  }
+
+  /* Search results */
+  .searchResults {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .resultInfo {
+    padding: 10px 12px 12px;
+  }
+
+  .resultTitle {
+    font-size: 13px;
+  }
+
+  .resultChannel {
+    font-size: 12px;
+  }
+
+  .resultMeta {
     font-size: 11px;
   }
 
-  .shortcutHowToArrow {
+  /* Quick download - always visible on mobile touch */
+  .quickDownload {
+    opacity: 1;
+    transform: translateY(0);
+    padding: 6px 12px;
+    font-size: 11px;
+    border-radius: 16px;
+  }
+
+  /* Format modal */
+  .formatModal {
+    width: 100%;
+    max-width: 100vw;
+    border-radius: 16px 16px 0 0;
+    max-height: 85vh;
+    margin-top: auto;
+  }
+
+  .formatModalOverlay {
+    align-items: flex-end;
+  }
+
+  .formatModalThumb {
+    width: 120px;
+  }
+
+  .formatGrid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+  }
+
+  .formatCard {
+    padding: 10px 6px;
+    min-height: 60px;
+  }
+
+  .formatCardExt {
     font-size: 14px;
+  }
+
+  .formatCardLabel {
+    font-size: 11px;
+  }
+
+  /* Download queue */
+  .queueSection {
+    margin-top: 20px;
+  }
+
+  .queueItem {
+    padding: 12px 14px;
+  }
+
+  .queueTitle {
+    font-size: 13px;
+    max-width: 180px;
+  }
+
+  /* Single video card */
+  .videoCard {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .videoTitle {
+    font-size: 16px;
+  }
+
+  .videoUploader {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  /* iOS Shortcut button */
+  .iosShortcutBtn {
+    font-size: 12px;
+    padding: 8px 16px;
+  }
+
+  /* Dynamic Island - slightly smaller on mobile */
+  .dynamicIsland {
+    top: 8px;
+    top: calc(8px + env(safe-area-inset-top));
+  }
+
+  .dynamicIslandExpanded {
+    width: min(300px, 90vw);
+    height: 50px;
+  }
+
+  .dynamicIslandTitle {
+    font-size: 12px;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 20px 0 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .footerShortcuts {
+    display: none;
+  }
+
+  /* Shortcut modal */
+  .shortcutModal {
+    width: 100%;
+    max-width: 100vw;
+    border-radius: 16px 16px 0 0;
+    max-height: 90vh;
+  }
+
+  .shortcutModalHeader {
+    padding: 20px 16px 0;
+  }
+
+  .shortcutModalBody {
+    padding: 20px 16px;
+  }
+
+  .shortcutModalIcon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .shortcutModalTitle {
+    font-size: 16px;
+  }
+
+  .shortcutSteps {
+    gap: 16px;
   }
 
   .shortcutStep {
     gap: 12px;
   }
 
+  .shortcutStepNum {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .shortcutStepContent h4 {
+    font-size: 14px;
+  }
+
+  .shortcutStepContent p {
+    font-size: 12px;
+  }
+
+  .shortcutCodeBlock {
+    padding: 10px 12px;
+  }
+
   .shortcutCodeBlock code {
-    font-size: 11px;
+    font-size: 10px;
+  }
+
+  /* How-to flow: go vertical on mobile */
+  .shortcutHowToSteps {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .shortcutHowToArrow {
+    transform: rotate(90deg);
+    font-size: 14px;
+  }
+
+  .shortcutHowToStep {
+    flex-direction: row;
+    min-width: unset;
+    width: 100%;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .shortcutHowToEmoji {
+    font-size: 20px;
+  }
+
+  .shortcutModalFooter {
+    padding: 0 16px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  /* Playlist modal */
+  .playlistModal {
+    flex-direction: column;
+    height: 90vh;
+    max-height: 90vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .overlay {
+    align-items: flex-end;
+  }
+
+  .playlistSidebar {
+    width: 100%;
+    padding: 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--yt-border);
+  }
+
+  .playlistContent {
+    padding: 16px;
+  }
+
+  .playlistSidebarTitle {
+    font-size: 18px;
+  }
+
+  /* Buttons - ensure 44px min touch targets */
+  .cancelBtn,
+  .downloadBtn {
+    min-height: 44px;
+    padding: 10px 20px;
+  }
+
+  .pill {
+    min-height: 36px;
+    padding: 6px 14px;
+  }
+
+  /* Skeleton loading */
+  .skeletonGrid {
+    gap: 12px;
+  }
+}
+
+/* Extra small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .main {
+    padding: 20px 12px 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .logoText {
+    font-size: 20px;
+  }
+
+  .urlInput {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .queueTitle {
+    max-width: 140px;
+  }
+
+  .shortcutCodeBlock code {
+    font-size: 9px;
   }
 }

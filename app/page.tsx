@@ -525,21 +525,65 @@ export default function Home() {
         <AutoDownloadHandler onAutoDownload={handleAutoDownload} />
       </Suspense>
 
-      {/* ── AUTO-DOWNLOAD BANNER ── */}
-      {autoDownloadStatus === "processing" && (
-        <div className={styles.autoBanner}>
-          <span className={styles.spinner} />
-          <span>Downloading {autoDownloadTitle || "video"} as MP3…</span>
+      {/* ── DYNAMIC ISLAND-STYLE STATUS PILL ── */}
+      {autoDownloadStatus !== "idle" && (
+        <div
+          className={`${styles.dynamicIsland} ${
+            autoDownloadStatus === "processing"
+              ? styles.dynamicIslandExpanded
+              : autoDownloadStatus === "done"
+              ? styles.dynamicIslandDone
+              : styles.dynamicIslandError
+          }`}
+        >
+          <div className={styles.dynamicIslandContent}>
+            {autoDownloadStatus === "processing" && (
+              <>
+                <div className={styles.dynamicIslandEqualizer}>
+                  <span /><span /><span /><span />
+                </div>
+                <div className={styles.dynamicIslandText}>
+                  <span className={styles.dynamicIslandLabel}>Downloading</span>
+                  <span className={styles.dynamicIslandTitle}>
+                    {autoDownloadTitle || "video"}
+                  </span>
+                </div>
+                <div className={styles.dynamicIslandWave}>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                  </svg>
+                </div>
+              </>
+            )}
+            {autoDownloadStatus === "done" && (
+              <>
+                <div className={styles.dynamicIslandCheck}>
+                  <svg viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                </div>
+                <span className={styles.dynamicIslandDoneText}>
+                  Downloaded!
+                </span>
+              </>
+            )}
+            {autoDownloadStatus === "error" && (
+              <>
+                <div className={styles.dynamicIslandErrorIcon}>!</div>
+                <span className={styles.dynamicIslandDoneText}>
+                  Failed
+                </span>
+              </>
+            )}
+          </div>
+          {autoDownloadStatus === "processing" && (
+            <div className={styles.dynamicIslandProgress} />
+          )}
         </div>
       )}
-      {autoDownloadStatus === "done" && (
-        <div className={`${styles.autoBanner} ${styles.autoBannerDone}`}>
-          <svg style={{ width: 18, height: 18, fill: "currentColor" }} viewBox="0 0 24 24">
-            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-          </svg>
-          <span>Download complete! Check your Downloads folder.</span>
-        </div>
-      )}
+
+      {/* ── AMBIENT GLOW (casts light from top like Dynamic Island) ── */}
+      <div className={styles.ambientGlow} />
 
       {/* ── HEADER ── */}
       <header className={styles.header}>
