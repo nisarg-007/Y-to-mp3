@@ -26,20 +26,20 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
     "Content-Type": "application/json",
   };
 
-  if (process.env.COBALT_API_KEY) {
-    const key = process.env.COBALT_API_KEY;
-    const forced = (process.env.COBALT_AUTH_SCHEME || "").toLowerCase();
+  const authHeaderOverride = process.env.COBALT_AUTHORIZATION?.trim();
+  if (authHeaderOverride) {
+    headers["Authorization"] = authHeaderOverride;
+  } else if (process.env.COBALT_API_KEY) {
+    const key = process.env.COBALT_API_KEY.trim();
+    const forced = (process.env.COBALT_AUTH_SCHEME || "").trim().toLowerCase();
+
     if (forced === "bearer") {
       headers["Authorization"] = `Bearer ${key}`;
     } else if (forced === "apikey" || forced === "api-key") {
       headers["Authorization"] = `Api-Key ${key}`;
     } else {
-      // Auto-detect JWT-looking keys (three parts separated by dots)
-      if (typeof key === "string" && key.split(".").length === 3) {
-        headers["Authorization"] = `Bearer ${key}`;
-      } else {
-        headers["Authorization"] = `Api-Key ${key}`;
-      }
+      const isJwt = key.split(".").length === 3;
+      headers["Authorization"] = isJwt ? `Bearer ${key}` : `Api-Key ${key}`;
     }
   }
 
