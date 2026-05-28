@@ -364,7 +364,7 @@ export default function Home() {
       const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (isMobile) {
         const downloadUrl = `/api/download?url=${encodeURIComponent(task.url)}&format=${encodeURIComponent(task.format)}`;
-        window.open(downloadUrl, "_blank");
+        window.location.assign(downloadUrl);
         setQueue((q) => q.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)));
         return;
       }
@@ -499,7 +499,7 @@ export default function Home() {
         const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isMobile) {
           const downloadUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&format=${encodeURIComponent(format)}`;
-          window.open(downloadUrl, "_blank");
+          window.location.assign(downloadUrl);
         } else {
           const dlRes = await fetch("/api/download", {
             method: "POST",
