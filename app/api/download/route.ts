@@ -40,16 +40,36 @@ function buildCobaltAuthorization(): string | undefined {
   return looksLikeJwt ? `Bearer ${key}` : `Api-Key ${key}`;
 }
 
-async function downloadWithCobalt(url: string, format: string): Promise<NextResponse> {
-  const cobaltUrl = process.env.COBALT_API || "https://api.cobalt.tools";
+const COBALT_FALLBACK_POOL = [
+  "https://nuko-c.meowing.de",
+  "https://apicobalt.mgytr.top",
+  "https://cobalt.omega.wolfy.love",
+  "https://cobalt.alpha.wolfy.love",
+  "https://cobaltapi.kittycat.boo",
+  "https://dog.kittycat.boo",
+  "https://cobaltapi.squair.xyz",
+  "https://melon.clxxped.lol",
+  "https://lime.clxxped.lol",
+  "https://api.qwkuns.me"
+];
+
+async function downloadWithCobalt(
+  url: string,
+  format: string,
+  targetCobaltUrl?: string,
+  useAuth: boolean = true
+): Promise<NextResponse> {
+  const cobaltUrl = targetCobaltUrl || process.env.COBALT_API || "https://api.cobalt.tools";
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
 
-  const authHeader = buildCobaltAuthorization();
-  if (authHeader) {
-    headers.Authorization = authHeader;
+  if (useAuth) {
+    const authHeader = buildCobaltAuthorization();
+    if (authHeader) {
+      headers.Authorization = authHeader;
+    }
   }
 
   const isAudio = format === "mp3" || format === "m4a";
@@ -110,6 +130,39 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
   }
 }
 
+async function downloadWithCobaltPool(url: string, format: string): Promise<NextResponse> {
+  const primaryUrl = process.env.COBALT_API || "https://api.cobalt.tools";
+  const errors: string[] = [];
+
+  console.log(`Attempting download with primary Cobalt API: ${primaryUrl}`);
+  try {
+    return await downloadWithCobalt(url, format, primaryUrl, true);
+  } catch (err: any) {
+    const msg = err.message || err;
+    console.error(`Primary Cobalt API failed: ${msg}`);
+    errors.push(`Primary (${primaryUrl}): ${msg}`);
+  }
+
+  // Iterate over fallback instances
+  for (const fallbackUrl of COBALT_FALLBACK_POOL) {
+    if (fallbackUrl.replace(/\/+$/, "") === primaryUrl.replace(/\/+$/, "")) {
+      continue;
+    }
+
+    console.log(`Attempting download with fallback Cobalt API: ${fallbackUrl}`);
+    try {
+      // Don't pass authorization headers to public community fallbacks
+      return await downloadWithCobalt(url, format, fallbackUrl, false);
+    } catch (err: any) {
+      const msg = err.message || err;
+      console.warn(`Fallback Cobalt API ${fallbackUrl} failed: ${msg}`);
+      errors.push(`${fallbackUrl}: ${msg}`);
+    }
+  }
+
+  throw new Error(`All Cobalt API instances in the pool failed. Details:\n${errors.join("\n")}`);
+}
+
 async function handleDownload(url: string, format: string) {
   if (!url) {
     return NextResponse.json({ error: "Missing URL" }, { status: 400 });
@@ -118,7 +171,7 @@ async function handleDownload(url: string, format: string) {
   // If running on Vercel, force Cobalt API download
   if (process.env.VERCEL === "1") {
     try {
-      return await downloadWithCobalt(url, format);
+      return await downloadWithCobaltPool(url, format);
     } catch (err: any) {
       console.error("Cobalt download failed:", err);
       return NextResponse.json(
@@ -206,7 +259,7 @@ async function handleDownload(url: string, format: string) {
       });
     } catch (cliErr) {
       console.warn("yt-dlp download failed, trying Cobalt API fallback:", cliErr);
-      return await downloadWithCobalt(url, format);
+      return await downloadWithCobaltPool(url, format);
     }
   } catch (e: any) {
     console.error(e);
