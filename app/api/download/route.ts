@@ -19,28 +19,37 @@ function getMime(ext: string): string {
   return map[ext] || "application/octet-stream";
 }
 
+function buildCobaltAuthorization(): string | undefined {
+  const override = process.env.COBALT_AUTHORIZATION?.trim();
+  if (override) return override;
+
+  const key = process.env.COBALT_API_KEY?.trim();
+  if (!key) return undefined;
+
+  const forced = (process.env.COBALT_AUTH_SCHEME || "").trim().toLowerCase();
+
+  if (/^bearer\s+/i.test(key)) return key;
+  if (/^(api-key|apikey|x-api-key)\s+/i.test(key)) return key;
+  if (/^basic\s+/i.test(key)) return key;
+
+  if (forced === "bearer") return `Bearer ${key}`;
+  if (forced === "apikey" || forced === "api-key" || forced === "x-api-key") return `Api-Key ${key}`;
+  if (forced === "basic") return `Basic ${key}`;
+
+  const looksLikeJwt = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key);
+  return looksLikeJwt ? `Bearer ${key}` : `Api-Key ${key}`;
+}
+
 async function downloadWithCobalt(url: string, format: string): Promise<NextResponse> {
   const cobaltUrl = process.env.COBALT_API || "https://api.cobalt.tools";
   const headers: Record<string, string> = {
-    "Accept": "application/json",
+    Accept: "application/json",
     "Content-Type": "application/json",
   };
 
-  const authHeaderOverride = process.env.COBALT_AUTHORIZATION?.trim();
-  if (authHeaderOverride) {
-    headers["Authorization"] = authHeaderOverride;
-  } else if (process.env.COBALT_API_KEY) {
-    const key = process.env.COBALT_API_KEY.trim();
-    const forced = (process.env.COBALT_AUTH_SCHEME || "").trim().toLowerCase();
-
-    if (forced === "bearer") {
-      headers["Authorization"] = `Bearer ${key}`;
-    } else if (forced === "apikey" || forced === "api-key") {
-      headers["Authorization"] = `Api-Key ${key}`;
-    } else {
-      const isJwt = key.split(".").length === 3;
-      headers["Authorization"] = isJwt ? `Bearer ${key}` : `Api-Key ${key}`;
-    }
+  const authHeader = buildCobaltAuthorization();
+  if (authHeader) {
+    headers.Authorization = authHeader;
   }
 
   const isAudio = format === "mp3" || format === "m4a";
@@ -69,7 +78,12 @@ async function downloadWithCobalt(url: string, format: string): Promise<NextResp
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Cobalt API failed (${response.status}): ${errorText}`);
+    let details = errorText;
+    try {
+      const json = JSON.parse(errorText);
+      details = json.text || json.error || json.message || errorText;
+    } catch {}
+    throw new Error(`Cobalt API failed (${response.status}): ${details || "Unknown error"}`);
   }
 
   const resData = await response.json();
