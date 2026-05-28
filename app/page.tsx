@@ -363,7 +363,7 @@ export default function Home() {
       // the browser handles the download natively.
       const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       if (isMobile) {
-        const downloadUrl = `/api/download?url=${encodeURIComponent(task.url)}&format=${encodeURIComponent(task.format)}`;
+        const downloadUrl = `/api/download?url=${encodeURIComponent(task.url)}&format=${encodeURIComponent(task.format)}&title=${encodeURIComponent(task.title)}`;
         window.location.assign(downloadUrl);
         setQueue((q) => q.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)));
         return;
@@ -372,7 +372,7 @@ export default function Home() {
       const res = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: task.url, format: task.format }),
+        body: JSON.stringify({ url: task.url, format: task.format, title: task.title }),
       });
 
       if (!res.ok) {
@@ -498,13 +498,13 @@ export default function Home() {
         // On mobile, open direct download URL so the browser handles saving.
         const isMobile = typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isMobile) {
-          const downloadUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&format=${encodeURIComponent(format)}`;
+          const downloadUrl = `/api/download?url=${encodeURIComponent(videoUrl)}&format=${encodeURIComponent(format)}&title=${encodeURIComponent(title)}`;
           window.location.assign(downloadUrl);
         } else {
           const dlRes = await fetch("/api/download", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: videoUrl, format }),
+            body: JSON.stringify({ url: videoUrl, format, title }),
           });
 
           if (!dlRes.ok) {

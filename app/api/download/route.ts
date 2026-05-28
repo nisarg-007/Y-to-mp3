@@ -7,6 +7,16 @@ import fs from "fs";
 
 const execAsync = promisify(exec);
 
+function sanitizeFilename(name: string): string {
+  if (!name || !name.trim()) return "download";
+  return name
+    .replace(/[<>:"\/\\|?*\x00-\x1f]/g, "_")  // Remove filesystem-unsafe chars
+    .replace(/\s+/g, " ")                        // Collapse whitespace
+    .trim()
+    .slice(0, 200)                                // Limit length
+    || "download";
+}
+
 function getMime(ext: string): string {
   const map: Record<string, string> = {
     mp3: "audio/mpeg",
@@ -56,6 +66,7 @@ const COBALT_FALLBACK_POOL = [
 async function downloadWithCobalt(
   url: string,
   format: string,
+  title: string,
   targetCobaltUrl?: string,
   useAuth: boolean = true
 ): Promise<NextResponse> {
@@ -119,10 +130,11 @@ async function downloadWithCobalt(
     }
 
     const ext = format === "mp3" ? "mp3" : format === "m4a" ? "m4a" : format.split("-")[1] || "mp4";
+    const safeTitle = sanitizeFilename(title);
     return new NextResponse(fileRes.body, {
       headers: {
         "Content-Type": fileRes.headers.get("content-type") || getMime(ext),
-        "Content-Disposition": `attachment; filename="download.${ext}"`,
+        "Content-Disposition": `attachment; filename="${safeTitle}.${ext}"`,
       },
     });
   } else {
@@ -130,13 +142,13 @@ async function downloadWithCobalt(
   }
 }
 
-async function downloadWithCobaltPool(url: string, format: string): Promise<NextResponse> {
+async function downloadWithCobaltPool(url: string, format: string, title: string): Promise<NextResponse> {
   const primaryUrl = process.env.COBALT_API || "https://api.cobalt.tools";
   const errors: string[] = [];
 
   console.log(`Attempting download with primary Cobalt API: ${primaryUrl}`);
   try {
-    return await downloadWithCobalt(url, format, primaryUrl, true);
+    return await downloadWithCobalt(url, format, title, primaryUrl, true);
   } catch (err: any) {
     const msg = err.message || err;
     console.error(`Primary Cobalt API failed: ${msg}`);
@@ -152,7 +164,7 @@ async function downloadWithCobaltPool(url: string, format: string): Promise<Next
     console.log(`Attempting download with fallback Cobalt API: ${fallbackUrl}`);
     try {
       // Don't pass authorization headers to public community fallbacks
-      return await downloadWithCobalt(url, format, fallbackUrl, false);
+      return await downloadWithCobalt(url, format, title, fallbackUrl, false);
     } catch (err: any) {
       const msg = err.message || err;
       console.warn(`Fallback Cobalt API ${fallbackUrl} failed: ${msg}`);
@@ -163,7 +175,7 @@ async function downloadWithCobaltPool(url: string, format: string): Promise<Next
   throw new Error(`All Cobalt API instances in the pool failed. Details:\n${errors.join("\n")}`);
 }
 
-async function handleDownload(url: string, format: string) {
+async function handleDownload(url: string, format: string, title: string) {
   if (!url) {
     return NextResponse.json({ error: "Missing URL" }, { status: 400 });
   }
@@ -171,7 +183,7 @@ async function handleDownload(url: string, format: string) {
   // If running on Vercel, force Cobalt API download
   if (process.env.VERCEL === "1") {
     try {
-      return await downloadWithCobaltPool(url, format);
+      return await downloadWithCobaltPool(url, format, title);
     } catch (err: any) {
       console.error("Cobalt download failed:", err);
       return NextResponse.json(
@@ -240,10 +252,11 @@ async function handleDownload(url: string, format: string) {
         const data = fs.readFileSync(actualFile);
         fs.unlinkSync(actualFile);
         const actualExt = path.extname(files[0]).slice(1);
+        const safeTitle = sanitizeFilename(title);
         return new NextResponse(data, {
           headers: {
             "Content-Type": getMime(actualExt),
-            "Content-Disposition": `attachment; filename="download.${actualExt}"`,
+            "Content-Disposition": `attachment; filename="${safeTitle}.${actualExt}"`,
           },
         });
       }
@@ -251,15 +264,16 @@ async function handleDownload(url: string, format: string) {
       const data = fs.readFileSync(outFile);
       fs.unlinkSync(outFile);
 
+      const safeTitle = sanitizeFilename(title);
       return new NextResponse(data, {
         headers: {
           "Content-Type": getMime(ext),
-          "Content-Disposition": `attachment; filename="download.${ext}"`,
+          "Content-Disposition": `attachment; filename="${safeTitle}.${ext}"`,
         },
       });
     } catch (cliErr) {
       console.warn("yt-dlp download failed, trying Cobalt API fallback:", cliErr);
-      return await downloadWithCobaltPool(url, format);
+      return await downloadWithCobaltPool(url, format, title);
     }
   } catch (e: any) {
     console.error(e);
@@ -271,12 +285,13 @@ async function handleDownload(url: string, format: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { url, format } = await req.json();
-  return await handleDownload(url, format);
+  const { url, format, title } = await req.json();
+  return await handleDownload(url, format, title || "download");
 }
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
   const format = req.nextUrl.searchParams.get("format") || "mp3";
-  return await handleDownload(url || "", format);
+  const title = req.nextUrl.searchParams.get("title") || "download";
+  return await handleDownload(url || "", format, title);
 }
