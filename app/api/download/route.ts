@@ -50,6 +50,24 @@ function buildCobaltAuthorization(): string | undefined {
   return looksLikeJwt ? `Bearer ${key}` : `Api-Key ${key}`;
 }
 
+function isOfficialCobaltInstance(url: string): boolean {
+  return new URL(url).hostname === "api.cobalt.tools";
+}
+
+function hasCobaltAuthConfigured(): boolean {
+  return Boolean(buildCobaltAuthorization());
+}
+
+function extractCobaltErrorDetails(errorText: string): string {
+  try {
+    const json = JSON.parse(errorText);
+    if (json?.error?.code) return `${json.error.code}: ${json.error.message || json.text || json.message || "Unknown Cobalt error"}`;
+    return json.text || json.error || json.message || errorText;
+  } catch {
+    return errorText;
+  }
+}
+
 const COBALT_FALLBACK_POOL = [
   "https://nuko-c.meowing.de",
   "https://apicobalt.mgytr.top",
@@ -109,18 +127,15 @@ async function downloadWithCobalt(
 
   if (!response.ok) {
     const errorText = await response.text();
-    let details = errorText;
-    try {
-      const json = JSON.parse(errorText);
-      details = json.text || json.error || json.message || errorText;
-    } catch {}
+    const details = extractCobaltErrorDetails(errorText);
     throw new Error(`Cobalt API failed (${response.status}): ${details || "Unknown error"}`);
   }
 
   const resData = await response.json();
 
   if (resData.status === "error") {
-    throw new Error(resData.text || "Cobalt download failed");
+    const details = extractCobaltErrorDetails(JSON.stringify(resData));
+    throw new Error(details || "Cobalt download failed");
   }
 
   if (resData.url) {
@@ -145,6 +160,12 @@ async function downloadWithCobalt(
 async function downloadWithCobaltPool(url: string, format: string, title: string): Promise<NextResponse> {
   const primaryUrl = process.env.COBALT_API || "https://api.cobalt.tools";
   const errors: string[] = [];
+
+  if (isOfficialCobaltInstance(primaryUrl) && !hasCobaltAuthConfigured()) {
+    throw new Error(
+      "The default Cobalt endpoint now requires authentication. Set COBALT_API to a working Cobalt instance or configure COBALT_API_KEY / COBALT_AUTHORIZATION before retrying."
+    );
+  }
 
   console.log(`Attempting download with primary Cobalt API: ${primaryUrl}`);
   try {

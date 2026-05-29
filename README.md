@@ -99,7 +99,7 @@ app/
 
 If you deploy this app to Vercel, you can customize the downloader backend:
 - `COBALT_API`: Set your custom Cobalt instance URL (e.g., `https://api.cobalt.tools` or your self-hosted instance URL). Defaults to the public `https://api.cobalt.tools`.
-- `COBALT_API_KEY`: If your Cobalt instance requires authorization, set your API key or JWT token here.
+- `COBALT_API_KEY`: If your Cobalt instance requires authorization, set your API key or JWT token here. The public `api.cobalt.tools` endpoint now requires a valid token, so this must be configured for Vercel deployments.
 - `COBALT_AUTH_SCHEME`: Optional. Force the auth scheme used with `COBALT_API_KEY`. Valid values are `bearer`, `apikey`, or `api-key`.
 - `COBALT_AUTHORIZATION`: Optional. If set, this value is sent directly as the `Authorization` header and takes precedence over `COBALT_AUTH_SCHEME`.
 
