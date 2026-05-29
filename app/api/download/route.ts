@@ -140,6 +140,7 @@ async function downloadWithCobalt(
     method: "POST",
     headers: sanitizedHeaders,
     body: JSON.stringify(sanitizedBody),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
@@ -179,40 +180,38 @@ async function downloadWithCobalt(
 async function downloadWithCobaltPool(url: string, format: string, title: string): Promise<NextResponse> {
   const primaryUrl = process.env.COBALT_API || "https://api.cobalt.tools";
   const errors: string[] = [];
+  const skipPrimary = isOfficialCobaltInstance(primaryUrl) && !hasCobaltAuthConfigured();
 
-  if (isOfficialCobaltInstance(primaryUrl) && !hasCobaltAuthConfigured()) {
-    throw new Error(
-      "The default Cobalt endpoint now requires authentication. Set COBALT_API to a working Cobalt instance or configure COBALT_API_KEY / COBALT_AUTHORIZATION before retrying."
-    );
-  }
-
-  console.log(`Attempting download with primary Cobalt API: ${primaryUrl}`);
-  try {
-    return await downloadWithCobalt(url, format, title, primaryUrl, true);
-  } catch (err: any) {
-    const msg = err.message || err;
-    console.error(`Primary Cobalt API failed: ${msg}`);
-    errors.push(`Primary (${primaryUrl}): ${msg}`);
-  }
-
-  // Iterate over fallback instances
-  for (const fallbackUrl of COBALT_FALLBACK_POOL) {
-    if (fallbackUrl.replace(/\/+$/, "") === primaryUrl.replace(/\/+$/, "")) {
-      continue;
-    }
-
-    console.log(`Attempting download with fallback Cobalt API: ${fallbackUrl}`);
+  if (!skipPrimary) {
+    console.log(`Attempting download with primary Cobalt API: ${primaryUrl}`);
     try {
-      // Don't pass authorization headers to public community fallbacks
-      return await downloadWithCobalt(url, format, title, fallbackUrl, false);
+      return await downloadWithCobalt(url, format, title, primaryUrl, true);
     } catch (err: any) {
-      const msg = err.message || err;
-      console.warn(`Fallback Cobalt API ${fallbackUrl} failed: ${msg}`);
-      errors.push(`${fallbackUrl}: ${msg}`);
+      const msg = err.message || String(err);
+      console.error(`Primary Cobalt API failed: ${msg}`);
+      errors.push(`Primary (${primaryUrl}): ${msg}`);
     }
+  } else {
+    console.warn("Skipping official Cobalt instance because authentication is not configured.");
   }
 
-  throw new Error(`All Cobalt API instances in the pool failed. Details:\n${errors.join("\n")}`);
+  const poolAttempts = COBALT_FALLBACK_POOL
+    .filter((fallbackUrl) => fallbackUrl.replace(/\/+$/, "") !== primaryUrl.replace(/\/+$/, ""))
+    .map((fallbackUrl) =>
+      downloadWithCobalt(url, format, title, fallbackUrl, false).catch((err) => {
+        const msg = err.message || String(err);
+        console.warn(`Fallback Cobalt API ${fallbackUrl} failed: ${msg}`);
+        errors.push(`${fallbackUrl}: ${msg}`);
+        return Promise.reject({ url: fallbackUrl, msg });
+      })
+    );
+
+  try {
+    return await Promise.any(poolAttempts);
+  } catch (agg: any) {
+    const poolErrors = (agg?.errors ?? []).map((e: any) => `${e.url}: ${e.msg}`);
+    throw new Error(`All Cobalt API instances failed.\n${[...errors, ...poolErrors].join("\n")}`);
+  }
 }
 
 async function handleDownload(url: string, format: string, title: string) {
