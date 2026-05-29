@@ -17,6 +17,15 @@ function sanitizeFilename(name: string): string {
     || "download";
 }
 
+function sanitizeForCobalt(str: string): string {
+  return str
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2026]/g, "...")
+    .replace(/[^\x00-\x7F]/g, "");
+}
+
 function getMime(ext: string): string {
   const map: Record<string, string> = {
     mp3: "audio/mpeg",
@@ -103,7 +112,7 @@ async function downloadWithCobalt(
 
   const isAudio = format === "mp3" || format === "m4a";
   const body: any = {
-    url: url,
+    url: sanitizeForCobalt(url),
     filenameStyle: "basic",
   };
 
@@ -119,23 +128,33 @@ async function downloadWithCobalt(
     }
   }
 
+  const sanitizedHeaders = Object.fromEntries(
+    Object.entries(headers).map(([key, value]) => [key, typeof value === "string" ? sanitizeForCobalt(value) : value])
+  ) as Record<string, string>;
+
+  const sanitizedBody = Object.fromEntries(
+    Object.entries(body).map(([key, value]) => [key, typeof value === "string" ? sanitizeForCobalt(value) : value])
+  );
+
   const response = await fetch(cobaltUrl, {
     method: "POST",
-    headers,
-    body: JSON.stringify(body),
+    headers: sanitizedHeaders,
+    body: JSON.stringify(sanitizedBody),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
     const details = extractCobaltErrorDetails(errorText);
-    throw new Error(`Cobalt API failed (${response.status}): ${details || "Unknown error"}`);
+    const errText = typeof errorText === "string" ? errorText : JSON.stringify(errorText);
+    throw new Error(`Cobalt API failed (${response.status}): ${details || errText || "Unknown error"}`);
   }
 
   const resData = await response.json();
 
   if (resData.status === "error") {
     const details = extractCobaltErrorDetails(JSON.stringify(resData));
-    throw new Error(details || "Cobalt download failed");
+    const errText = typeof resData === "string" ? resData : JSON.stringify(resData);
+    throw new Error(`${details || errText || "Cobalt download failed"}`);
   }
 
   if (resData.url) {
