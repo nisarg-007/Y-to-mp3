@@ -132,7 +132,7 @@ ytdl/
 | ------------------- | ----- | -------------------------------- |
 | `page.tsx`          | 1277  | All UI, state management, logic  |
 | `page.module.css`   | 2369  | All styling for every component  |
-| `api/download/route.ts` | 283 | Download engine + Cobalt pool  |
+| `api/download/route.ts` | ~340 | Download engine + Cobalt pool + health cache |
 | `api/info/route.ts` | 254   | Metadata extraction chain        |
 | `api/search/route.ts` | 128  | YouTube Data API search         |
 | `api/formats/route.ts` | 64   | Format listing                  |
@@ -367,9 +367,11 @@ Request → handleDownload(url, format)
     │
     ├── Vercel? → downloadWithCobaltPool(url, format)
     │                  │
-    │                  ├── Try primary Cobalt API (with auth)
-    │                  ├── Try fallback pool instances (without auth)
-    │                  └── All fail → return 500 error
+    │                  ├── Try user-configured primary instance (with auth)
+    │                  ├── Try community pool sequentially, best-scored first
+    │                  │     (skip recently-failed instances via health cache)
+    │                  ├── Last-resort: retry up to 3 failed instances
+    │                  └── All fail → return 500 error with detailed hints
     │
     └── Local? → Try yt-dlp
                      │
@@ -395,10 +397,27 @@ The `downloadWithCobalt()` function:
 1. Constructs a request body based on format type:
    - Audio: `{ downloadMode: "audio", audioFormat: "mp3", audioBitrate: "256" }`
    - Video: `{ downloadMode: "auto", videoQuality: "1080" }`
-2. Sends POST to the Cobalt instance.
-3. Parses the response — Cobalt returns a `{ url: "..." }` with a temporary download link.
-4. Fetches the actual media file from that URL.
-5. Streams it back to the browser with appropriate `Content-Type` and `Content-Disposition` headers.
+2. Sends POST to the Cobalt instance (20s timeout).
+3. Parses the response — handles **all Cobalt v11 response types**:
+   - `status: "redirect"` + `url` → direct CDN link
+   - `status: "tunnel"` + `url` → proxied download through Cobalt
+   - `status: "stream"` + `url` → streaming link
+   - `status: "picker"` + `picker[]` → multiple options (selects audio or video based on format)
+   - Legacy: `{ url: "..." }` with no explicit status
+4. Fetches the actual media file from the download URL (55s timeout).
+5. Streams it back to the browser with appropriate `Content-Type`, `Content-Disposition`, and `Content-Length` headers.
+
+**Instance Health Cache:**
+
+An in-memory `Map` tracks recently-failed instances:
+- After failure: instance is skipped for **2 minutes** on subsequent requests.
+- After success: instance is marked healthy (removed from cache).
+- YouTube-specific errors (`youtube.login`, `youtube.auth`) cause immediate skip to next instance without delay.
+- Between non-YouTube failures, a 300ms cooldown prevents hammering instances.
+
+**Timeouts:**
+- API call to Cobalt: **20 seconds** (increased from 15s).
+- Media file download: **55 seconds** (leaves 5s buffer for Vercel's 60s function limit).
 
 **MIME type mapping (`getMime`):**
 ```
@@ -716,31 +735,50 @@ For platforms that support system binaries:
 
 **File:** `app/api/download/route.ts`
 
-When the primary Cobalt API fails, the app tries a pool of **10 community-hosted Cobalt instances**:
+The app uses a pool of **13 community-hosted Cobalt instances**, verified via [cobalt.directory](https://cobalt.directory/) and sorted by reliability score. Only instances where YouTube is confirmed working are included:
 
 ```typescript
 const COBALT_FALLBACK_POOL = [
+  // 100% — 23/23 services, YouTube ✅
   "https://nuko-c.meowing.de",
-  "https://apicobalt.mgytr.top",
+
+  // 96% — 22/23, YouTube ✅
   "https://cobalt.omega.wolfy.love",
-  "https://cobalt.alpha.wolfy.love",
-  "https://cobaltapi.kittycat.boo",
-  "https://dog.kittycat.boo",
-  "https://cobaltapi.squair.xyz",
-  "https://melon.clxxped.lol",
   "https://lime.clxxped.lol",
-  "https://api.qwkuns.me"
+  "https://apicobalt.mgytr.top",
+
+  // 91% — 21/23, YouTube ✅
+  "https://cobalt.alpha.wolfy.love",
+
+  // 87% — 20/23, YouTube ✅
+  "https://dog.kittycat.boo",
+  "https://fox.kittycat.boo",
+  "https://cobaltapi.squair.xyz",
+  "https://cobaltapi.kittycat.boo",
+  "https://api.qwkuns.me",
+
+  // 74% — 17/23, YouTube ✅
+  "https://api.cobalt.liubquanti.click",
+
+  // 70% — 16/23, YouTube ✅
+  "https://api.cobalt.blackcat.sweeux.org",
+
+  // 61% — 14/23, YouTube ✅
+  "https://cobaltapi.cjs.nz",
 ];
 ```
 
 **Important behaviors:**
-- The **primary** instance (from `COBALT_API` env var) is tried **with** auth headers.
-- **Fallback** instances are tried **without** auth headers (they are public community instances).
-- Instances are tried **sequentially** (not in parallel) to avoid overwhelming them.
-- The primary instance URL is skipped in the fallback pool to avoid duplicate attempts.
+- The **primary** instance (from `COBALT_API` env var) is tried **first, with** auth headers.
+- Official `api.cobalt.tools` is **skipped** unless auth is configured (it blocks non-whitelisted IPs).
+- **Fallback** instances are tried **sequentially** (best-scored first), **without** auth headers.
+- **Health cache** tracks failed instances in memory and skips them for 2 minutes.
+- Healthy instances are sorted first; recently-failed instances are pushed to the end.
+- YouTube-specific errors (`youtube.login`) trigger immediate skip to next instance.
+- **Last-resort retry**: if all healthy instances fail, up to 3 recently-failed instances are retried.
 - All errors are collected and returned in the final error message if all instances fail.
 
-**⚠️ Note for future AI assistants:** These community URLs may go offline or change. If downloads consistently fail on Vercel, check if these URLs are still active and update the pool. The [Cobalt instances list](https://instances.cobalt.best/) is a good source for current instances.
+**⚠️ Note for future AI assistants:** These community URLs may go offline or change. If downloads consistently fail on Vercel, check [cobalt.directory](https://cobalt.directory/) for currently working instances and update the pool. Exclude any instances where YouTube shows `error.api.youtube.login` — those have YouTube-specific auth issues.
 
 ---
 
@@ -806,19 +844,25 @@ type SearchResult = {
 
 1. **YouTube HTML scraping is fragile.** YouTube frequently changes its page structure. The regex patterns for `ytInitialPlayerResponse` and `ytInitialData` may break. If metadata fetching stops working on Vercel, this is likely the cause.
 
-2. **Cobalt API community instances are ephemeral.** They go online and offline regularly. The fallback pool should be updated periodically.
+2. **Cobalt API community instances are ephemeral.** They go online and offline regularly. The fallback pool should be updated periodically using [cobalt.directory](https://cobalt.directory/) data.
 
-3. **YouTube Data API quotas.** The search endpoint has a daily quota (default 10,000 units/day for free tier). Each search costs ~100 units. Heavy usage may exhaust the quota.
+3. **Official `api.cobalt.tools` blocks server IPs.** The official instances return `error.api.auth.key.ip_not_allowed` for programmatic access. The app automatically skips these and uses community instances instead.
 
-4. **Large playlists are capped at 100 entries.** Both the yt-dlp and HTML scraping paths limit to `.slice(0, 100)`. This is intentional to prevent timeout issues.
+4. **YouTube Data API quotas.** The search endpoint has a daily quota (default 10,000 units/day for free tier). Each search costs ~100 units. Heavy usage may exhaust the quota.
 
-5. **No progress tracking for downloads.** The progress bar is indeterminate because neither yt-dlp (spawned as a child process without pipe parsing) nor the Cobalt API provides real-time progress.
+5. **Large playlists are capped at 100 entries.** Both the yt-dlp and HTML scraping paths limit to `.slice(0, 100)`. This is intentional to prevent timeout issues.
 
-6. **yt-dlp is invoked as `python -m yt_dlp`** (not `yt-dlp` directly). This ensures compatibility with `pip install yt-dlp` installations where the binary may not be on PATH.
+6. **No progress tracking for downloads.** The progress bar is indeterminate because neither yt-dlp (spawned as a child process without pipe parsing) nor the Cobalt API provides real-time progress.
 
-7. **File is read entirely into memory before streaming.** The local yt-dlp path reads the entire downloaded file into memory with `fs.readFileSync()`. For very large video files, this could cause memory issues. Cobalt downloads stream directly from the API response.
+7. **yt-dlp is invoked as `python -m yt_dlp`** (not `yt-dlp` directly). This ensures compatibility with `pip install yt-dlp` installations where the binary may not be on PATH.
 
-8. **Search input URLs with `list=` AND `watch?v=` are treated as videos, not playlists.** If a user pastes a video URL that happens to include a playlist reference (e.g., playing a video within a playlist), it's handled as a single video download.
+8. **File is read entirely into memory before streaming (local only).** The local yt-dlp path reads the entire downloaded file into memory with `fs.readFileSync()`. For very large video files, this could cause memory issues. Cobalt downloads stream directly from the API response.
+
+9. **Search input URLs with `list=` AND `watch?v=` are treated as videos, not playlists.** If a user pastes a video URL that happens to include a playlist reference (e.g., playing a video within a playlist), it's handled as a single video download.
+
+10. **Instance health cache is in-memory only.** On Vercel, each serverless function invocation may be a cold start with an empty health cache. The cache is most effective during warm function periods with sustained traffic.
+
+11. **Vercel 60s function timeout.** The media download timeout is set to 55s to leave a 5s buffer. Very large video files may still exceed this limit.
 
 ---
 
@@ -833,10 +877,11 @@ type SearchResult = {
 - [ ] **Service Worker caching** — Cache the app shell for offline access (PWA).
 - [ ] **Queue management** — Retry failed downloads, reorder queue, cancel in-progress downloads.
 - [ ] **WebSocket progress** — Replace polling with real-time WebSocket updates for download progress.
-- [ ] **Automated Cobalt pool health check** — Periodically ping instances and remove dead ones.
+- [x] ~~**Automated Cobalt pool health check**~~ — Implemented via in-memory health cache that tracks failed instances for 2 minutes.
+- [ ] **Dynamic instance discovery** — Fetch live instance list from cobalt.directory API to keep the pool automatically up-to-date.
 
 ---
 
-> **Last Updated:** May 2025
+> **Last Updated:** May 2026
 > **Maintainer:** nisarg-007
 > **Repo:** [github.com/nisarg-007/Y-to-mp3](https://github.com/nisarg-007/Y-to-mp3)

@@ -16,7 +16,7 @@ A Next.js app for downloading YouTube videos and playlists as MP3 or video.
 
 This app supports **two modes of operation**:
 1. **Local Development (CLI Mode)**: Uses `yt-dlp` and `ffmpeg` locally for unlimited, direct downloads.
-2. **Vercel Serverless (API Mode)**: Automatically detects Vercel environments and falls back to a public or private **Cobalt API instance**, bypassing local system dependencies!
+2. **Vercel Serverless (API Mode)**: Automatically detects Vercel environments and uses a **smart Cobalt API fallback pool** — 13 community instances sorted by reliability score, with automatic health tracking and sequential failover.
 
 ---
 
@@ -98,13 +98,23 @@ app/
 ## Environment Variables (for Vercel)
 
 If you deploy this app to Vercel, you can customize the downloader backend:
-- `COBALT_API`: Set your custom Cobalt instance URL (e.g., `https://api.cobalt.tools` or your self-hosted instance URL). Defaults to the public `https://api.cobalt.tools`.
-- `COBALT_API_KEY`: If your Cobalt instance requires authorization, set your API key or JWT token here. The public `api.cobalt.tools` endpoint now requires a valid token, so this must be configured for Vercel deployments.
+- `COBALT_API`: Set your custom Cobalt instance URL (e.g., your self-hosted instance). If unset, the app uses a pool of 13 verified community instances.
+- `COBALT_API_KEY`: If your Cobalt instance requires authorization, set your API key or JWT token here.
 - `COBALT_AUTH_SCHEME`: Optional. Force the auth scheme used with `COBALT_API_KEY`. Valid values are `bearer`, `apikey`, or `api-key`.
 - `COBALT_AUTHORIZATION`: Optional. If set, this value is sent directly as the `Authorization` header and takes precedence over `COBALT_AUTH_SCHEME`.
+
+## Cobalt Fallback Pool
+
+On Vercel, the app uses a **smart sequential fallback** system:
+- **13 community Cobalt instances** verified via [cobalt.directory](https://cobalt.directory/), sorted by reliability score (100% → 61%).
+- Instances are tried **one at a time** (best-scored first), stopping on first success.
+- **Health cache** tracks failed instances in memory and skips them for 2 minutes.
+- Handles all Cobalt v11 response types: `redirect`, `tunnel`, `stream`, and `picker`.
+- Last-resort retry of recently-failed instances if all healthy ones fail.
 
 ## Notes
 
 - This app uses `python -m yt_dlp` locally to work in environments where yt-dlp is installed via pip.
-- When running on Vercel, metadata is fetched via pure-Node YouTube Oembed / Page Scrapers, and downloading is streamed through Cobalt API.
+- When running on Vercel, metadata is fetched via pure-Node YouTube oEmbed / Page Scrapers, and downloading is streamed through Cobalt API.
 - Downloads are streamed directly to your browser without storing files on the server.
+- The official `api.cobalt.tools` blocks programmatic access from server IPs — the community fallback pool handles this automatically.
